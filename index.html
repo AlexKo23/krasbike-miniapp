@@ -26,7 +26,7 @@
             box-shadow: 0 3px 15px rgba(0,0,0,0.08);
         }
         .row {
-            margin: 12px 0;
+            margin: 15px 0;
         }
         .label {
             color: #777;
@@ -35,7 +35,7 @@
         .value {
             font-size: 18px;
             font-weight: bold;
-            margin-top: 4px;
+            margin-top: 5px;
         }
         button {
             width: 100%;
@@ -49,6 +49,7 @@
         }
         .error {
             color: #c00;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -93,50 +94,77 @@ const supabaseClient =
     supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 async function loadRental() {
     try {
-        const { data: courier, error: courierError } =
+        // Получаем курьера
+        const { data: couriers, error: courierError } =
             await supabaseClient
                 .from("couriers")
                 .select("*")
-                .limit(1)
-                .single();
-        if (courierError) throw courierError;
+                .limit(1);
+        if (courierError) {
+            throw courierError;
+        }
+        if (!couriers || couriers.length === 0) {
+            throw new Error("Курьер не найден");
+        }
+        const courier = couriers[0];
         document.getElementById("courierName").textContent =
-            courier.name || "Курьер";
-        const { data: rental, error: rentalError } =
+            courier.name || "Александр";
+        // Получаем активную аренду
+        const { data: rentals, error: rentalError } =
             await supabaseClient
                 .from("rentals")
                 .select("*")
                 .eq("courier_id", courier.id)
                 .eq("status", "active")
-                .limit(1)
-                .single();
-        if (rentalError) throw rentalError;
+                .limit(1);
+        if (rentalError) {
+            throw rentalError;
+        }
+        if (!rentals || rentals.length === 0) {
+            throw new Error("Аренда не найдена");
+        }
+        const rental = rentals[0];
+        // Стоимость
         document.getElementById("rentAmount").textContent =
             (rental.rent_amount || 0) + " ₽";
+        // Дата оплаты
         document.getElementById("paymentDate").textContent =
-            rental.payment_due_date || "Не указано";
+02:08
+
+
+rental.payment_due_date || rental.next_payment_date || "Не указано";
+        // Статус
         document.getElementById("status").textContent =
             rental.status === "active"
                 ? "Активна"
                 : rental.status;
+        // Транспорт
         if (rental.vehicle_id) {
-            const { data: vehicle, error: vehicleError } =
+            const { data: vehicles, error: vehicleError } =
                 await supabaseClient
                     .from("vehicles")
                     .select("*")
                     .eq("id", rental.vehicle_id)
-                    .single();
-            if (vehicleError) throw vehicleError;
-            document.getElementById("vehicleName").textContent =
-                vehicle.name ||
-                vehicle.model ||
-                "Транспорт";
+                    .limit(1);
+            if (vehicleError) {
+                throw vehicleError;
+            }
+            if (vehicles && vehicles.length > 0) {
+                const vehicle = vehicles[0];
+                document.getElementById("vehicleName").textContent =
+                    vehicle.name ||
+                    vehicle.model ||
+                    "Транспорт";
+            } else {
+                document.getElementById("vehicleName").textContent =
+                    "Транспорт не найден";
+            }
         } else {
             document.getElementById("vehicleName").textContent =
                 "Не назначен";
         }
     } catch (error) {
-        console.error(error);
+        console.error("Ошибка:", error);
         document.getElementById("error").textContent =
             "Не удалось загрузить данные.";
     }
